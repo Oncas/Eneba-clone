@@ -1,14 +1,16 @@
-import axios from 'axios';
+import axios from "axios";
+import { KeyType } from "../types/keyType";
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = "http://localhost:3000";
 
 export interface Game {
   id: number;
   name: string;
-  photoUrl: string | null;
+  photoUrl: string | null; // Legacy field
+  photoUrls: string[] | null; // Array of image URLs
   price: number;
   discount: number;
-  keyType: string;
+  keyType: KeyType;
   creatorEmail: string;
   createdAt?: string;
   finalPrice: number;
@@ -16,17 +18,17 @@ export interface Game {
 
 export interface CreateGameRequest {
   name: string;
-  photoUrl?: string;
   price: number;
   discount?: number;
-  keyType: string;
+  keyType: KeyType;
   creatorEmail: string;
+  photoUrls?: string[]; // Array of base64 image strings
 }
 
 export const api = {
   // Get all games or search games
   getGames: async (search?: string): Promise<Game[]> => {
-    const url = search 
+    const url = search
       ? `${API_BASE_URL}/list?search=${encodeURIComponent(search)}`
       : `${API_BASE_URL}/list`;
     const response = await axios.get<Game[]>(url);
@@ -35,7 +37,15 @@ export const api = {
 
   // Create a new game listing
   createGame: async (gameData: CreateGameRequest): Promise<Game> => {
-    const response = await axios.post<Game>(`${API_BASE_URL}/publish`, gameData);
+    const response = await axios.post<Game>(
+      `${API_BASE_URL}/publish`,
+      gameData,
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     return response.data;
   },
 };

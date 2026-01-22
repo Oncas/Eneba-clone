@@ -1,208 +1,183 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import type { CreateGameRequest } from '../services/api';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "../services/api";
+import { PageHeader } from "../components/layout/PageHeader";
+import { Input } from "../components/ui/Input";
+import { Select } from "../components/ui/Select";
+import { Button } from "../components/ui/Button";
+import { ErrorMessage } from "../components/ui/ErrorMessage";
+import { ImageUpload } from "../components/form/ImageUpload";
+import { validateGameForm } from "../utils/formValidation";
+import { KeyType, KEY_TYPE_OPTIONS } from "../types/keyType";
 
 export const CreateGame = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<CreateGameRequest>({
-    name: '',
-    photoUrl: '',
-    price: 0,
-    discount: 0,
-    keyType: '',
-    creatorEmail: '',
+  const [imageBase64Strings, setImageBase64Strings] = useState<string[]>([]);
+  const [formData, setFormData] = useState<{
+    name: string;
+    price: string;
+    discount: string;
+    keyType: KeyType | "";
+    creatorEmail: string;
+  }>({
+    name: "",
+    price: "",
+    discount: "",
+    keyType: "",
+    creatorEmail: "",
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === 'price' || name === 'discount' ? parseFloat(value) || 0 : value,
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Convert string values to numbers for validation and submission
+    const numericFormData = {
+      name: formData.name,
+      price: parseFloat(formData.price) || 0,
+      discount: parseFloat(formData.discount) || 0,
+      keyType: formData.keyType as KeyType,
+      creatorEmail: formData.creatorEmail,
+    };
+
+    // Client-side validation
+    const validationErrors = validateGameForm(numericFormData);
+    const firstError = Object.values(validationErrors)[0];
+    if (firstError) {
+      setError(firstError);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Validate required fields
-      if (!formData.name.trim()) {
-        throw new Error('Name is required');
-      }
-      if (formData.price <= 0) {
-        throw new Error('Price must be greater than 0');
-      }
-      if (!formData.keyType.trim()) {
-        throw new Error('Key Type is required');
-      }
-      if (!formData.creatorEmail.trim()) {
-        throw new Error('Creator Email is required');
-      }
-
-      await api.createGame(formData);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to create game. Please try again.');
-      console.error('Error creating game:', err);
+      await api.createGame({
+        ...numericFormData,
+        photoUrls: imageBase64Strings,
+      });
+      navigate("/");
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : (err as { response?: { data?: { error?: string } } }).response?.data
+              ?.error || "Failed to create game. Please try again.";
+      setError(errorMessage);
+      console.error("Error creating game:", err);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F1E] py-12">
-      <div className="container mx-auto px-4 max-w-2xl">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate('/')}
-            className="text-purple-400 hover:text-purple-300 mb-4 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Gallery
-          </button>
-          <h1 className="text-3xl font-bold text-white">Create New Game Listing</h1>
-          <p className="text-gray-400 mt-2">Add a new game key to the marketplace</p>
-        </div>
+    <div className="min-h-screen bg-[#0F0F1E] py-6 sm:py-12">
+      <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
+        <PageHeader
+          title="Create New Game Listing"
+          subtitle="Add a new game key to the marketplace"
+          backTo="/"
+          backLabel="Back to Gallery"
+        />
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-[#1A1A2E] border border-[#2D2D44] rounded-lg p-6 space-y-6">
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-900/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
+        <form
+          onSubmit={handleSubmit}
+          className="bg-[#1A1A2E] border border-[#2D2D44] rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6"
+        >
+          {error && <ErrorMessage message={error} />}
 
-          {/* Name */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-              Game Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              required
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
-              placeholder="e.g., Split Fiction"
-            />
-          </div>
+          <Input
+            label="Game Name"
+            name="name"
+            type="text"
+            required
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="e.g., Split Fiction"
+          />
 
-          {/* Photo URL */}
-          <div>
-            <label htmlFor="photoUrl" className="block text-sm font-medium text-gray-300 mb-2">
-              Photo URL
-            </label>
-            <input
-              type="url"
-              id="photoUrl"
-              name="photoUrl"
-              value={formData.photoUrl}
-              onChange={handleChange}
-              className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
-              placeholder="https://example.com/game-image.jpg"
-            />
-          </div>
+          <ImageUpload
+            images={imageBase64Strings}
+            onImagesChange={setImageBase64Strings}
+            onError={setError}
+          />
 
-          {/* Price and Discount */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="price" className="block text-sm font-medium text-gray-300 mb-2">
-                Price (€) <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="number"
-                id="price"
-                name="price"
-                required
-                min="0"
-                step="0.01"
-                value={formData.price}
-                onChange={handleChange}
-                className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
-                placeholder="49.99"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="discount" className="block text-sm font-medium text-gray-300 mb-2">
-                Discount (%)
-              </label>
-              <input
-                type="number"
-                id="discount"
-                name="discount"
-                min="0"
-                max="100"
-                step="1"
-                value={formData.discount}
-                onChange={handleChange}
-                className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          {/* Key Type */}
-          <div>
-            <label htmlFor="keyType" className="block text-sm font-medium text-gray-300 mb-2">
-              Type of Key <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              id="keyType"
-              name="keyType"
+            <Input
+              label="Price (€)"
+              name="price"
+              type="number"
               required
-              value={formData.keyType}
+              min="0"
+              step="0.01"
+              value={formData.price}
               onChange={handleChange}
-              className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
-              placeholder="e.g., Steam, Epic Games, Xbox Live"
+              placeholder="49.99"
+            />
+
+            <Input
+              label="Discount (%)"
+              name="discount"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              value={formData.discount}
+              onChange={handleChange}
+              placeholder="0"
             />
           </div>
 
-          {/* Creator Email */}
-          <div>
-            <label htmlFor="creatorEmail" className="block text-sm font-medium text-gray-300 mb-2">
-              Creator Email <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="email"
-              id="creatorEmail"
-              name="creatorEmail"
-              required
-              value={formData.creatorEmail}
-              onChange={handleChange}
-              className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
-              placeholder="seller@example.com"
-            />
-          </div>
+          <Select
+            label="Type of Key"
+            name="keyType"
+            required
+            value={formData.keyType}
+            onChange={handleChange}
+            placeholder="Select a key type"
+            options={KEY_TYPE_OPTIONS.map((keyType) => ({
+              value: keyType,
+              label: keyType,
+            }))}
+          />
 
-          {/* Submit Button */}
-          <div className="flex gap-4 pt-4">
-            <button
+          <Input
+            label="Creator Email"
+            name="creatorEmail"
+            type="email"
+            required
+            value={formData.creatorEmail}
+            onChange={handleChange}
+            placeholder="seller@example.com"
+          />
+
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 pt-4">
+            <Button
               type="button"
-              onClick={() => navigate('/')}
-              className="flex-1 bg-[#2D2D44] hover:bg-[#3D3D54] text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              variant="secondary"
+              onClick={() => navigate("/")}
+              className="flex-1 w-full sm:w-auto"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-[#6B46C1] hover:bg-[#7C3AED] disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+              className="flex-1 w-full sm:w-auto"
             >
-              {loading ? 'Publishing...' : 'Publish Game'}
-            </button>
+              {loading ? "Publishing..." : "Publish Game"}
+            </Button>
           </div>
         </form>
       </div>

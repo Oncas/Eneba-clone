@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { initializeDatabase, getDatabase } from './database/init';
 import { CreateGameRequest, Game, GameResponse } from './types/game';
+import { isValidKeyType, KEY_TYPE_OPTIONS } from './types/keyType';
 
 dotenv.config();
 
@@ -11,8 +12,10 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Increased limit for base64 images (50MB in bytes)
+const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB
+app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
+app.use(express.urlencoded({ extended: true, limit: MAX_PAYLOAD_SIZE }));
 
 // Initialize database on startup
 initializeDatabase().catch(console.error);
@@ -24,9 +27,29 @@ function calculateFinalPrice(price: number, discount: number): number {
 }
 
 // Helper function to convert Game to GameResponse
-function toGameResponse(game: Game): GameResponse {
+function toGameResponse(game: any): GameResponse {
+  // Parse photoUrls from JSON string if it's a string
+  let photoUrls: string[] | null = null;
+  if (game.photoUrls) {
+    if (typeof game.photoUrls === 'string') {
+      try {
+        photoUrls = JSON.parse(game.photoUrls);
+      } catch {
+        photoUrls = [];
+      }
+    } else if (Array.isArray(game.photoUrls)) {
+      photoUrls = game.photoUrls;
+    }
+  }
+  
+  // Fallback to photoUrl if photoUrls is empty/null
+  if ((!photoUrls || photoUrls.length === 0) && game.photoUrl) {
+    photoUrls = [game.photoUrl];
+  }
+
   return {
     ...game,
+    photoUrls,
     finalPrice: calculateFinalPrice(game.price, game.discount || 0)
   };
 }
@@ -59,6 +82,11 @@ app.post('/publish', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'KeyType is required and must be a non-empty string' });
     }
 
+    // Validate keyType is a valid enum value
+    if (!isValidKeyType(gameData.keyType)) {
+      return res.status(400).json({ error: `Invalid keyType. Must be one of: ${KEY_TYPE_OPTIONS.join(', ')}` });
+    }
+
     if (!gameData.creatorEmail || typeof gameData.creatorEmail !== 'string' || gameData.creatorEmail.trim() === '') {
       return res.status(400).json({ error: 'CreatorEmail is required and must be a non-empty string' });
     }
@@ -75,25 +103,38 @@ app.post('/publish', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Discount must be between 0 and 100' });
     }
 
-    const photoUrl = gameData.photoUrl || null;
+    // Process base64 images
+    const photoUrls: string[] = [];
+    if (gameData.photoUrls && Array.isArray(gameData.photoUrls) && gameData.photoUrls.length > 0) {
+      // Validate base64 strings
+      for (const base64String of gameData.photoUrls) {
+        if (typeof base64String === 'string' && base64String.startsWith('data:image/')) {
+          photoUrls.push(base64String);
+        }
+      }
+    }
 
     // Insert into database
     const db = await getDatabase();
+    const photoUrlsJson = JSON.stringify(photoUrls);
+    const photoUrl = photoUrls.length > 0 ? photoUrls[0] : null; // Keep first image for backward compatibility
+
     const result = await db.run(
-      `INSERT INTO games (name, photoUrl, price, discount, keyType, creatorEmail)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO games (name, photoUrl, photoUrls, price, discount, keyType, creatorEmail)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         gameData.name.trim(),
         photoUrl,
+        photoUrlsJson,
         gameData.price,
         discount,
-        gameData.keyType.trim(),
+        gameData.keyType,
         gameData.creatorEmail.trim()
       ]
     );
 
     // Fetch the created game
-    const createdGame = await db.get<Game>(
+    const createdGame = await db.get<any>(
       'SELECT * FROM games WHERE id = ?',
       [result.lastID]
     );
@@ -104,9 +145,9 @@ app.post('/publish', async (req: Request, res: Response) => {
 
     const response: GameResponse = toGameResponse(createdGame);
     res.status(201).json(response);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating game:', error);
-    res.status(500).json({ error: 'Internal server error while creating game' });
+    res.status(500).json({ error: error.message || 'Internal server error while creating game' });
   }
 });
 
@@ -135,8 +176,8 @@ app.get('/list', async (req: Request, res: Response) => {
       games = results as Game[];
     }
 
-    // Convert to GameResponse with finalPrice
-    const response: GameResponse[] = games.map(toGameResponse);
+    // Convert to GameResponse with finalPrice and parse photoUrls
+    const response: GameResponse[] = games.map((game: any) => toGameResponse(game));
 
     res.json(response);
   } catch (error) {
@@ -146,8 +187,16 @@ app.get('/list', async (req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: express.NextFunction) => {
+app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
   console.error('Unhandled error:', err);
+  
+  // Handle payload too large errors
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ 
+      error: `Payload too large. Maximum size is ${MAX_PAYLOAD_SIZE / (1024 * 1024)}MB. Your request was ${(err.length / (1024 * 1024)).toFixed(2)}MB.` 
+    });
+  }
+  
   res.status(500).json({ error: 'Internal server error' });
 });
 
