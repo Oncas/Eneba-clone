@@ -53,21 +53,11 @@ The `games` table has the following columns:
    npm install
    ```
 
-2. Create a `.env` file:
-   ```bash
-   PORT=3000
-   NODE_ENV=development
-   ```
-
-3. Seed the database with initial games:
+2. Seed the database with initial games:
    ```bash
    npm run seed
    ```
 
-4. Start the backend server:
-   ```bash
-   npm run dev
-   ```
 
 The backend will run on `http://localhost:3000`
 
@@ -83,10 +73,6 @@ The backend will run on `http://localhost:3000`
    npm install
    ```
 
-3. Start the frontend development server:
-   ```bash
-   npm run dev
-   ```
 
 The frontend will run on `http://localhost:5173` (or another port if 5173 is taken)
 
