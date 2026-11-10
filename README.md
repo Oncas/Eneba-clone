@@ -1,200 +1,73 @@
-# Eneba Clone
+# Eneba clone
 
-A full-stack game key marketplace application with a Node.js/Express backend and React frontend.
+A small game key marketplace inspired by Eneba. Sellers list a game key with a
+price, discount and platform; buyers browse the gallery and search it by name.
 
-## Project Overview
+This is a practice project. It is not affiliated with Eneba.
 
-- **Backend**: Node.js with TypeScript, Express.js, and SQLite
-- **Frontend**: React with TypeScript, Tailwind CSS, and React Router
+- **Backend:** Node.js, Express and TypeScript, with a SQLite database
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS and React Router
 
-## Project Structure
+## Run it
 
-```
-Eneba-clone/
-├── src/                      # Backend source code
-│   ├── database/
-│   │   ├── init.ts          # Database initialization script
-│   │   └── seed.ts          # Database seeding script
-│   ├── types/
-│   │   └── game.ts          # TypeScript interfaces for Game objects
-│   └── app.ts               # Express application entry point
-├── frontend/                 # React frontend application
-│   ├── src/
-│   │   ├── components/      # React components
-│   │   ├── pages/          # Page components
-│   │   ├── services/       # API service layer
-│   │   └── ...
-│   └── ...
-├── dist/                    # Compiled backend JavaScript (generated)
-├── database.sqlite          # SQLite database file (generated)
-├── tsconfig.json            # Backend TypeScript configuration
-├── package.json             # Backend dependencies and scripts
-└── README.md               # This file
+You need Node.js 20.19 or newer. Start the backend and the frontend in two
+terminals.
+
+```sh
+# Terminal 1: backend on http://localhost:3000
+npm install
+npm run seed      # creates database.sqlite with 3 sample games
+npm run dev
 ```
 
-## Database Schema
+```sh
+# Terminal 2: frontend on http://localhost:5173
+cd frontend
+npm install
+npm run dev
+```
 
-The `games` table has the following columns:
-- `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
-- `name` (TEXT NOT NULL)
-- `photoUrl` (TEXT)
-- `price` (REAL NOT NULL)
-- `discount` (REAL DEFAULT 0)
-- `keyType` (TEXT NOT NULL)
-- `creatorEmail` (TEXT NOT NULL)
-- `createdAt` (DATETIME DEFAULT CURRENT_TIMESTAMP)
+Then open http://localhost:5173.
 
-## Setup Instructions
+## Pages
 
-### Backend Setup
+- `/` - gallery of listed games, with a search box that queries the API as
+  you type
+- `/create` - form to list a new game key, with image upload
 
-1. Install backend dependencies:
-   ```bash
-   npm install
-   ```
+## API
 
-2. Seed the database with initial games:
-   ```bash
-   npm run seed
-   ```
+| Method | Path | What it does |
+| --- | --- | --- |
+| GET | `/list` | All games, newest first |
+| GET | `/list?search=split` | Games whose name contains the search text |
+| POST | `/publish` | Create a listing |
+| GET | `/health` | Health check |
 
+Every game in a response includes `finalPrice`, the price after the discount.
 
-The backend will run on `http://localhost:3000`
+`POST /publish` takes JSON like this:
 
-### Frontend Setup
-
-1. Navigate to the frontend directory:
-   ```bash
-   cd frontend
-   ```
-
-2. Install frontend dependencies:
-   ```bash
-   npm install
-   ```
-
-
-The frontend will run on `http://localhost:5173` (or another port if 5173 is taken)
-
-### Running the Full Application
-
-1. Start the backend server (from root directory):
-   ```bash
-   npm run dev
-   ```
-
-2. Start the frontend server (in a new terminal, from frontend directory):
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-
-3. Open your browser to the frontend URL (usually `http://localhost:5173`)
-
-## Available Scripts
-
-### Backend Scripts
-
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm start` - Run the compiled JavaScript
-- `npm run dev` - Run the development server with ts-node
-- `npm run seed` - Seed the database with initial game data
-
-### Frontend Scripts (from `frontend/` directory)
-
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-## API Endpoints
-
-### POST /publish
-Creates a new game listing.
-
-**Request Body:**
 ```json
 {
-  "name": "Game Name",
-  "photoUrl": "https://example.com/image.jpg",  // Optional
-  "price": 59.99,
-  "discount": 10,  // Optional, defaults to 0
-  "keyType": "Steam",
-  "creatorEmail": "seller@example.com"
-}
-```
-
-**Response (201 Created):**
-```json
-{
-  "id": 1,
-  "name": "Game Name",
-  "photoUrl": "https://example.com/image.jpg",
-  "price": 59.99,
+  "name": "Split Fiction",
+  "price": 49.99,
   "discount": 10,
   "keyType": "Steam",
   "creatorEmail": "seller@example.com",
-  "createdAt": "2024-01-01 12:00:00",
-  "finalPrice": 53.99
+  "photoUrls": ["data:image/jpeg;base64,..."]
 }
 ```
 
-### GET /list
-Retrieves all games or searches games by name.
+- `name`, `price`, `keyType` and `creatorEmail` are required.
+- `price` must be 0 or more and `discount` between 0 and 100 (default 0).
+- `keyType` is one of: Steam, Epic Games, Xbox Live, PlayStation, Nintendo,
+  GOG, Origin, Uplay, Battle.net, Other.
+- Invalid input returns `400` with an `error` message.
 
-**Query Parameters:**
-- `search` (optional): Search term for fuzzy matching on game names
+## Project layout
 
-**Response (200 OK):**
-```json
-[
-  {
-    "id": 1,
-    "name": "FIFA 23",
-    "photoUrl": "https://example.com/fifa23.jpg",
-    "price": 59.99,
-    "discount": 10,
-    "keyType": "Steam",
-    "creatorEmail": "seller1@example.com",
-    "createdAt": "2024-01-01 12:00:00",
-    "finalPrice": 53.99
-  }
-]
 ```
-
-**Examples:**
-- Get all games: `GET /list`
-- Search games: `GET /list?search=split`
-
-## Validation Rules
-
-POST /publish validates:
-- `name`: Required, non-empty string
-- `price`: Required, non-negative number
-- `keyType`: Required, non-empty string
-- `creatorEmail`: Required, valid email format
-- `discount`: Optional, must be between 0 and 100 (defaults to 0)
-- `photoUrl`: Optional string
-
-## Error Handling
-
-All endpoints return appropriate HTTP status codes:
-- `200 OK` - Successful GET request
-- `201 Created` - Successful POST request
-- `400 Bad Request` - Validation errors
-- `404 Not Found` - Route not found
-- `500 Internal Server Error` - Server errors
-
-## Frontend Features
-
-- **Gallery Page**: Search and browse game listings in a responsive grid layout
-- **Create Game Page**: Form to add new game listings to the marketplace
-- **Real-time Search**: Debounced search that queries the backend API as you type
-- **Dark Purple Theme**: Matches the Eneba aesthetic with a modern UI
-
-## Initial Games
-
-The database is seeded with 3 games:
-1. FIFA 23
-2. Red Dead Redemption 2
-3. Split Fiction
+src/            backend: Express app, database setup and seed data
+frontend/src/   React app: pages, components and the API client
+```
