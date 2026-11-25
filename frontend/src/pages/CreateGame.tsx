@@ -8,7 +8,7 @@ import { Button } from "../components/ui/Button";
 import { ErrorMessage } from "../components/ui/ErrorMessage";
 import { ImageUpload } from "../components/form/ImageUpload";
 import { validateGameForm } from "../utils/formValidation";
-import { KeyType, KEY_TYPE_OPTIONS } from "../types/keyType";
+import { KEY_TYPE_OPTIONS, type KeyType } from "../types/keyType";
 
 export const CreateGame = () => {
   const navigate = useNavigate();

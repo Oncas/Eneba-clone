@@ -1,14 +1,14 @@
-export enum KeyType {
-  STEAM = 'Steam',
-  EPIC_GAMES = 'Epic Games',
-  XBOX_LIVE = 'Xbox Live',
-  PLAYSTATION = 'PlayStation',
-  NINTENDO = 'Nintendo',
-  GOG = 'GOG',
-  ORIGIN = 'Origin',
-  UPLAY = 'Uplay',
-  BATTLE_NET = 'Battle.net',
-  OTHER = 'Other',
-}
+export const KEY_TYPE_OPTIONS = [
+  'Steam',
+  'Epic Games',
+  'Xbox Live',
+  'PlayStation',
+  'Nintendo',
+  'GOG',
+  'Origin',
+  'Uplay',
+  'Battle.net',
+  'Other',
+] as const;
 
-export const KEY_TYPE_OPTIONS = Object.values(KeyType);
+export type KeyType = (typeof KEY_TYPE_OPTIONS)[number];

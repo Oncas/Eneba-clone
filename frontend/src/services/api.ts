@@ -1,5 +1,5 @@
 import axios from "axios";
-import { KeyType } from "../types/keyType";
+import type { KeyType } from "../types/keyType";
 
 const API_BASE_URL = "http://localhost:3000";
 

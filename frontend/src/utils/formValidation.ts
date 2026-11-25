@@ -1,4 +1,4 @@
-import { KeyType, KEY_TYPE_OPTIONS } from '../types/keyType';
+import { KEY_TYPE_OPTIONS, type KeyType } from '../types/keyType';
 
 export interface ValidationErrors {
   name?: string;
