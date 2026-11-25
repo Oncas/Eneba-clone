@@ -8,6 +8,7 @@ import { Select } from "../components/ui/Select";
 import { Button } from "../components/ui/Button";
 import { ErrorMessage } from "../components/ui/ErrorMessage";
 import { ImageUpload } from "../components/form/ImageUpload";
+import type { SelectedImage } from "../components/form/ImageUpload";
 import { validateGameForm } from "../utils/formValidation";
 import { KEY_TYPE_OPTIONS, type KeyType } from "../types/keyType";
 
@@ -15,7 +16,7 @@ export const CreateGame = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [imageBase64Strings, setImageBase64Strings] = useState<string[]>([]);
+  const [images, setImages] = useState<SelectedImage[]>([]);
   const [formData, setFormData] = useState<{
     name: string;
     price: string;
@@ -66,7 +67,7 @@ export const CreateGame = () => {
     try {
       await api.createGame({
         ...numericFormData,
-        photoUrls: imageBase64Strings,
+        images: images.map((image) => image.file),
       });
       navigate("/");
     } catch (err) {
@@ -107,8 +108,8 @@ export const CreateGame = () => {
           />
 
           <ImageUpload
-            images={imageBase64Strings}
-            onImagesChange={setImageBase64Strings}
+            images={images}
+            onImagesChange={setImages}
             onError={setError}
           />
 

@@ -1,8 +1,14 @@
 import { useState, useRef } from 'react';
 
+// A picked file plus a data URL used only to preview it in the form
+export interface SelectedImage {
+  file: File;
+  preview: string;
+}
+
 interface ImageUploadProps {
-  images: string[];
-  onImagesChange: (images: string[]) => void;
+  images: SelectedImage[];
+  onImagesChange: (images: SelectedImage[]) => void;
   onError?: (error: string) => void;
   maxSizeMB?: number;
 }
@@ -24,8 +30,8 @@ export const ImageUpload = ({
     setIsProcessing(true);
 
     try {
-      const base64Promises = fileArray.map((file) => {
-        return new Promise<string>((resolve, reject) => {
+      const previewPromises = fileArray.map((file) => {
+        return new Promise<SelectedImage>((resolve, reject) => {
           if (!file.type.startsWith('image/')) {
             reject(new Error(`${file.name} is not an image file`));
             return;
@@ -37,14 +43,14 @@ export const ImageUpload = ({
           }
 
           const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
+          reader.onload = () => resolve({ file, preview: reader.result as string });
           reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
           reader.readAsDataURL(file);
         });
       });
 
-      const base64Strings = await Promise.all(base64Promises);
-      onImagesChange([...images, ...base64Strings]);
+      const selected = await Promise.all(previewPromises);
+      onImagesChange([...images, ...selected]);
       
       // Clear the input after successful upload
       if (fileInputRef.current) {
@@ -88,10 +94,10 @@ export const ImageUpload = ({
 
       {images.length > 0 && (
         <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-4">
-          {images.map((base64String, index) => (
+          {images.map((image, index) => (
             <div key={index} className="relative group">
               <img
-                src={base64String}
+                src={image.preview}
                 alt={`Preview ${index + 1}`}
                 className="w-full h-32 object-cover rounded-lg border border-raised"
               />

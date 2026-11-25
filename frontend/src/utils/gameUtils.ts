@@ -1,15 +1,7 @@
+import { imageUrl } from '../services/api';
 import type { Game } from '../services/api';
 
 /**
- * Extracts image array from game object
- * Prefers photoUrls array, falls back to photoUrl
+ * Returns browser-loadable URLs for a game's images
  */
-export const getGameImages = (game: Game): string[] => {
-  if (game.photoUrls && game.photoUrls.length > 0) {
-    return game.photoUrls;
-  }
-  if (game.photoUrl) {
-    return [game.photoUrl];
-  }
-  return [];
-};
+export const getGameImages = (game: Game): string[] => game.photoUrls.map(imageUrl);
