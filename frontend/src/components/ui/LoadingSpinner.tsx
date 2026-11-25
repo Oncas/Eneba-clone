@@ -12,7 +12,7 @@ export const LoadingSpinner = ({ size = 'md', className = '' }: LoadingSpinnerPr
 
   return (
     <div className={`flex justify-center items-center ${className}`}>
-      <div className={`animate-spin rounded-full border-t-2 border-b-2 border-[#6B46C1] ${sizeClasses[size]}`}></div>
+      <div className={`animate-spin rounded-full border-t-2 border-b-2 border-accent ${sizeClasses[size]}`}></div>
     </div>
   );
 };

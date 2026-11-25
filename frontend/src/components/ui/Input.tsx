@@ -29,10 +29,10 @@ export const Input = ({
       )}
       <input
         id={inputId}
-        className={`w-full bg-[#0F0F1E] border rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-colors ${
+        className={`w-full bg-page border rounded-lg px-3 sm:px-4 py-2 text-sm sm:text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-colors ${
           error
             ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-            : 'border-[#2D2D44] focus:border-[#6B46C1] focus:ring-[#6B46C1]/20'
+            : 'border-raised focus:border-accent focus:ring-accent/20'
         } ${className}`}
         value={value}
         {...props}

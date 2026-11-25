@@ -81,7 +81,7 @@ export const CreateGame = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F1E] py-6 sm:py-12">
+    <div className="min-h-screen bg-page py-6 sm:py-12">
       <div className="container mx-auto px-4 sm:px-6 max-w-2xl">
         <PageHeader
           title="Create New Game Listing"
@@ -92,7 +92,7 @@ export const CreateGame = () => {
 
         <form
           onSubmit={handleSubmit}
-          className="bg-[#1A1A2E] border border-[#2D2D44] rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6"
+          className="bg-surface border border-raised rounded-lg p-4 sm:p-6 space-y-4 sm:space-y-6"
         >
           {error && <ErrorMessage message={error} />}
 
