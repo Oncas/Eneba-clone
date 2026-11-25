@@ -12,7 +12,7 @@ export const SearchBar = ({ value, onChange, placeholder = 'Search...' }: Search
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-3 sm:px-4 py-2 sm:py-3 pl-8 sm:pl-10 text-sm sm:text-base text-white placeholder-gray-400 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20"
+        className="w-full bg-page border border-raised rounded-lg px-3 sm:px-4 py-2 sm:py-3 pl-8 sm:pl-10 text-sm sm:text-base text-white placeholder-gray-400 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
       />
       <svg
         className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400"

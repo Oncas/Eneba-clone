@@ -7,9 +7,16 @@ export default {
   theme: {
     extend: {
       colors: {
-        'eneba-purple': '#6B46C1',
-        'eneba-dark': '#1A1A2E',
-        'eneba-darker': '#0F0F1E',
+        page: '#0F0F1E',
+        surface: '#1A1A2E',
+        raised: {
+          DEFAULT: '#2D2D44',
+          hover: '#3D3D54',
+        },
+        accent: {
+          DEFAULT: '#6B46C1',
+          hover: '#7C3AED',
+        },
       },
     },
   },

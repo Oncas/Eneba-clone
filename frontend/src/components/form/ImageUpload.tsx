@@ -83,7 +83,7 @@ export const ImageUpload = ({
         accept="image/*"
         onChange={handleImageChange}
         disabled={isProcessing}
-        className="w-full bg-[#0F0F1E] border border-[#2D2D44] rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-[#6B46C1] focus:ring-2 focus:ring-[#6B46C1]/20 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#6B46C1] file:text-white hover:file:bg-[#7C3AED] file:cursor-pointer disabled:opacity-50"
+        className="w-full bg-page border border-raised rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-accent file:text-white hover:file:bg-accent-hover file:cursor-pointer disabled:opacity-50"
       />
 
       {images.length > 0 && (
@@ -93,7 +93,7 @@ export const ImageUpload = ({
               <img
                 src={base64String}
                 alt={`Preview ${index + 1}`}
-                className="w-full h-32 object-cover rounded-lg border border-[#2D2D44]"
+                className="w-full h-32 object-cover rounded-lg border border-raised"
               />
               <button
                 type="button"

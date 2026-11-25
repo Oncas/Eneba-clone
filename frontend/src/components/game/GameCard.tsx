@@ -12,7 +12,7 @@ export const GameCard = ({ game }: GameCardProps) => {
   const images = getGameImages(game);
 
   return (
-    <div className="bg-[#1A1A2E] rounded-lg overflow-hidden border border-[#2D2D44] hover:border-[#6B46C1] transition-all duration-300 hover:shadow-lg hover:shadow-purple-900/20">
+    <div className="bg-surface rounded-lg overflow-hidden border border-raised hover:border-accent transition-all duration-300 hover:shadow-lg hover:shadow-purple-900/20">
       <GameImage images={images} gameName={game.name}>
         <DiscountBadge discount={game.discount} />
       </GameImage>

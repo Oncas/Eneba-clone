@@ -41,7 +41,7 @@ export const Gallery = () => {
   }, [searchQuery, searchGames]);
 
   return (
-    <div className="min-h-screen bg-[#0F0F1E]">
+    <div className="min-h-screen bg-page">
       <GalleryHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} />
 
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
