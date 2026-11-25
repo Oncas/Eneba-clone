@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { isAxiosError } from "axios";
 import { api } from "../services/api";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Input } from "../components/ui/Input";
@@ -70,10 +71,8 @@ export const CreateGame = () => {
       navigate("/");
     } catch (err) {
       const errorMessage =
-        err instanceof Error
-          ? err.message
-          : (err as { response?: { data?: { error?: string } } }).response?.data
-              ?.error || "Failed to create game. Please try again.";
+        (isAxiosError<{ error?: string }>(err) && err.response?.data?.error) ||
+        "Failed to create game. Please try again.";
       setError(errorMessage);
       console.error("Error creating game:", err);
     } finally {
