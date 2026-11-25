@@ -1,14 +1,12 @@
 {
   "name": "eneba-clone",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Backend for a small game key marketplace",
   "scripts": {
     "build": "tsc",
     "start": "node dist/app.js",
     "dev": "node --watch -r ts-node/register src/app.ts",
-    "seed": "ts-node src/database/seed.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "seed": "ts-node src/database/seed.ts"
   },
   "keywords": [],
   "author": "",
