@@ -11,7 +11,8 @@ import { GamesGrid } from '../components/layout/GamesGrid';
 export const Gallery = () => {
   const [games, setGames] = useState<Game[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  // Start in the loading state: the first fetch waits for the search debounce
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const searchGames = useCallback(async (query: string) => {
@@ -27,10 +28,6 @@ export const Gallery = () => {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => {
-    searchGames('');
-  }, [searchGames]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
