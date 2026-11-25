@@ -6,7 +6,7 @@ import { UPLOAD_DIR, UPLOAD_URL_PATH } from '../uploads';
 interface Game {
   name: string;
   imageFileName: string;
-  price: number;
+  priceCents: number;
   discount: number;
   keyType: string;
   creatorEmail: string;
@@ -16,7 +16,7 @@ const games: Game[] = [
   {
     name: 'FIFA 23',
     imageFileName: 'game-000002.jpg',
-    price: 59.99,
+    priceCents: 5999,
     discount: 10,
     keyType: 'Steam',
     creatorEmail: 'seller1@example.com'
@@ -24,7 +24,7 @@ const games: Game[] = [
   {
     name: 'Red Dead Redemption 2',
     imageFileName: 'game-000003.jpg',
-    price: 39.99,
+    priceCents: 3999,
     discount: 20,
     keyType: 'Epic Games',
     creatorEmail: 'seller2@example.com'
@@ -32,7 +32,7 @@ const games: Game[] = [
   {
     name: 'Split Fiction',
     imageFileName: 'game-000001.jpg',
-    price: 29.99,
+    priceCents: 2999,
     discount: 0,
     keyType: 'Steam',
     creatorEmail: 'seller3@example.com'
@@ -62,12 +62,12 @@ export async function seedDatabase(): Promise<void> {
     }
 
     await db.run(
-      `INSERT INTO games (name, photoUrls, price, discount, keyType, creatorEmail)
+      `INSERT INTO games (name, photoUrls, priceCents, discount, keyType, creatorEmail)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         game.name,
         JSON.stringify(photoUrls),
-        game.price,
+        game.priceCents,
         game.discount,
         game.keyType,
         game.creatorEmail

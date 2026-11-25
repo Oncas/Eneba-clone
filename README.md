@@ -45,6 +45,10 @@ Then open http://localhost:5173.
 | GET | `/health` | Health check |
 | GET | `/uploads/<file>` | An uploaded image |
 
+Prices in requests and responses are in euros (`49.99`). The database stores
+them as whole cents (`4999`) so money never picks up floating point rounding
+errors.
+
 Every game in a response includes `finalPrice`, the price after the discount,
 and `photoUrls`, the paths of its images such as `/uploads/<file>.jpg`.
 
@@ -61,7 +65,8 @@ curl http://localhost:3000/publish \
 - `name`, `price`, `keyType` and `creatorEmail` are required.
 - `images` is optional and can repeat: up to 10 JPEG, PNG, WebP or GIF files,
   5MB each.
-- `price` must be 0 or more and `discount` between 0 and 100 (default 0).
+- `price` must be 0 or more and is rounded to whole cents. `discount` is a
+  whole number between 0 and 100 (default 0).
 - `keyType` is one of: Steam, Epic Games, Xbox Live, PlayStation, Nintendo,
   GOG, Origin, Uplay, Battle.net, Other.
 - Invalid input returns `400` with an `error` message.

@@ -20,8 +20,8 @@ export async function initializeDatabase(): Promise<void> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       photoUrls TEXT,
-      price REAL NOT NULL,
-      discount REAL DEFAULT 0,
+      priceCents INTEGER NOT NULL,
+      discount INTEGER DEFAULT 0,
       keyType TEXT NOT NULL,
       creatorEmail TEXT NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP

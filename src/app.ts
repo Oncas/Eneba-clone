@@ -7,7 +7,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import multer from 'multer';
 import { initializeDatabase, getDatabase } from './database/init';
-import { Game, GameResponse } from './types/game';
+import { GameResponse, GameRow } from './types/game';
 import { isValidKeyType, KEY_TYPE_OPTIONS } from './types/keyType';
 import { UPLOAD_DIR, UPLOAD_URL_PATH } from './uploads';
 
@@ -51,18 +51,19 @@ app.use(UPLOAD_URL_PATH, express.static(UPLOAD_DIR));
 // Initialize database on startup
 initializeDatabase().catch(console.error);
 
-// Helper function to calculate final price
-function calculateFinalPrice(price: number, discount: number): number {
-  const discountAmount = (price * discount) / 100;
-  return Math.round((price - discountAmount) * 100) / 100; // Round to 2 decimal places
+// Price after the discount, in whole cents (rounded to the nearest cent)
+function calculateFinalPriceCents(priceCents: number, discount: number): number {
+  return Math.round((priceCents * (100 - discount)) / 100);
 }
 
-// Helper function to convert a database row to GameResponse
-function toGameResponse(game: any): GameResponse {
+// Helper function to convert a database row to GameResponse (prices in euros)
+function toGameResponse(row: GameRow): GameResponse {
+  const { priceCents, ...game } = row;
   return {
     ...game,
-    photoUrls: game.photoUrls ? JSON.parse(game.photoUrls) : [],
-    finalPrice: calculateFinalPrice(game.price, game.discount || 0)
+    photoUrls: row.photoUrls ? JSON.parse(row.photoUrls) : [],
+    price: priceCents / 100,
+    finalPrice: calculateFinalPriceCents(priceCents, row.discount) / 100
   };
 }
 
@@ -121,8 +122,8 @@ app.post('/publish', upload.array('images', MAX_IMAGES), async (req: Request, re
 
     // Set defaults
     const discount = parseNumber(gameData.discount) ?? 0;
-    if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
-      return res.status(400).json({ error: 'Discount must be between 0 and 100' });
+    if (!Number.isInteger(discount) || discount < 0 || discount > 100) {
+      return res.status(400).json({ error: 'Discount must be a whole number between 0 and 100' });
     }
 
     // Save the images under random names and keep their public paths
@@ -136,12 +137,12 @@ app.post('/publish', upload.array('images', MAX_IMAGES), async (req: Request, re
     // Insert into database
     const db = await getDatabase();
     const result = await db.run(
-      `INSERT INTO games (name, photoUrls, price, discount, keyType, creatorEmail)
+      `INSERT INTO games (name, photoUrls, priceCents, discount, keyType, creatorEmail)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
         gameData.name.trim(),
         JSON.stringify(photoUrls),
-        price,
+        Math.round(price * 100), // euros from the client -> whole cents
         discount,
         gameData.keyType,
         gameData.creatorEmail.trim()
@@ -149,7 +150,7 @@ app.post('/publish', upload.array('images', MAX_IMAGES), async (req: Request, re
     );
 
     // Fetch the created game
-    const createdGame = await db.get<any>(
+    const createdGame = await db.get<GameRow>(
       'SELECT * FROM games WHERE id = ?',
       [result.lastID]
     );
@@ -172,7 +173,7 @@ app.get('/list', async (req: Request, res: Response) => {
     const searchQuery = req.query.search as string | undefined;
     const db = await getDatabase();
 
-    let games: Game[];
+    let games: GameRow[];
 
     if (searchQuery && searchQuery.trim() !== '') {
       // Perform fuzzy search using SQL LIKE
@@ -182,17 +183,17 @@ app.get('/list', async (req: Request, res: Response) => {
          ORDER BY name ASC`,
         [`%${searchQuery.trim()}%`]
       );
-      games = results as Game[];
+      games = results as GameRow[];
     } else {
       // Return all games
       const results = await db.all(
         'SELECT * FROM games ORDER BY createdAt DESC, name ASC'
       );
-      games = results as Game[];
+      games = results as GameRow[];
     }
 
     // Convert to GameResponse with finalPrice and parse photoUrls
-    const response: GameResponse[] = games.map((game: any) => toGameResponse(game));
+    const response: GameResponse[] = games.map(toGameResponse);
 
     res.json(response);
   } catch (error) {
