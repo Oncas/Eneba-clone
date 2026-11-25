@@ -16,7 +16,7 @@ terminals.
 ```sh
 # Terminal 1: backend on http://localhost:3000
 npm install
-npm run seed      # creates database.sqlite with 3 sample games
+npm run seed      # resets database.sqlite and uploads/ to 3 sample games
 npm run dev
 ```
 
@@ -43,31 +43,39 @@ Then open http://localhost:5173.
 | GET | `/list?search=split` | Games whose name contains the search text |
 | POST | `/publish` | Create a listing |
 | GET | `/health` | Health check |
+| GET | `/uploads/<file>` | An uploaded image |
 
-Every game in a response includes `finalPrice`, the price after the discount.
+Every game in a response includes `finalPrice`, the price after the discount,
+and `photoUrls`, the paths of its images such as `/uploads/<file>.jpg`.
 
-`POST /publish` takes JSON like this:
+`POST /publish` takes `multipart/form-data`, the format a browser uses to
+upload files:
 
-```json
-{
-  "name": "Split Fiction",
-  "price": 49.99,
-  "discount": 10,
-  "keyType": "Steam",
-  "creatorEmail": "seller@example.com",
-  "photoUrls": ["data:image/jpeg;base64,..."]
-}
+```sh
+curl http://localhost:3000/publish \
+  -F name="Split Fiction" -F price=49.99 -F discount=10 \
+  -F keyType=Steam -F creatorEmail=seller@example.com \
+  -F images=@cover.jpg -F images=@screenshot.png
 ```
 
 - `name`, `price`, `keyType` and `creatorEmail` are required.
+- `images` is optional and can repeat: up to 10 JPEG, PNG, WebP or GIF files,
+  5MB each.
 - `price` must be 0 or more and `discount` between 0 and 100 (default 0).
 - `keyType` is one of: Steam, Epic Games, Xbox Live, PlayStation, Nintendo,
   GOG, Origin, Uplay, Battle.net, Other.
 - Invalid input returns `400` with an `error` message.
+
+## Images
+
+Uploaded images are saved as files in `uploads/` (not committed) and served
+at `/uploads`. The database stores only their paths. `npm run seed` empties
+`uploads/` and copies in the sample images from `src/initial-images/`.
 
 ## Project layout
 
 ```
 src/            backend: Express app, database setup and seed data
 frontend/src/   React app: pages, components and the API client
+uploads/        uploaded images, created on first run
 ```

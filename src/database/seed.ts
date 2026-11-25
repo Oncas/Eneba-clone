@@ -1,6 +1,7 @@
 import { getDatabase, initializeDatabase, closeDatabase } from './init';
 import * as fs from 'fs';
 import * as path from 'path';
+import { UPLOAD_DIR, UPLOAD_URL_PATH } from '../uploads';
 
 interface Game {
   name: string;
@@ -38,69 +39,34 @@ const games: Game[] = [
   }
 ];
 
-/**
- * Converts an image file to base64 data URI
- */
-function imageToBase64(imagePath: string): string {
-  try {
-    const imageBuffer = fs.readFileSync(imagePath);
-    const base64String = imageBuffer.toString('base64');
-    // Determine MIME type from file extension
-    const mimeType = imagePath.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
-    return `data:${mimeType};base64,${base64String}`;
-  } catch (error) {
-    console.error(`Error reading image file ${imagePath}:`, error);
-    throw error;
-  }
-}
-
 export async function seedDatabase(): Promise<void> {
   await initializeDatabase();
   const db = await getDatabase();
 
-  // Get the temp folder path (relative to project root)
-  const tempFolderPath = path.join(__dirname, '../initial-images');
+  const initialImagesPath = path.join(__dirname, '../initial-images');
 
-  // Clear existing data (optional - remove if you want to keep existing data)
+  // Start from an empty catalogue: remove all games and their uploaded images
   await db.run('DELETE FROM games');
+  fs.rmSync(UPLOAD_DIR, { recursive: true, force: true });
+  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-  // Insert games with base64 images
   for (const game of games) {
-    const imagePath = path.join(tempFolderPath, game.imageFileName);
-    
-    // Check if image file exists
-    if (!fs.existsSync(imagePath)) {
+    const imagePath = path.join(initialImagesPath, game.imageFileName);
+    const photoUrls: string[] = [];
+
+    if (fs.existsSync(imagePath)) {
+      fs.copyFileSync(imagePath, path.join(UPLOAD_DIR, game.imageFileName));
+      photoUrls.push(`${UPLOAD_URL_PATH}/${game.imageFileName}`);
+    } else {
       console.warn(`Warning: Image file not found: ${imagePath}. Skipping image for ${game.name}`);
-      // Insert game without image
-      await db.run(
-        `INSERT INTO games (name, photoUrl, photoUrls, price, discount, keyType, creatorEmail)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          game.name,
-          null,
-          JSON.stringify([]),
-          game.price,
-          game.discount,
-          game.keyType,
-          game.creatorEmail
-        ]
-      );
-      continue;
     }
 
-    // Convert image to base64
-    const base64Image = imageToBase64(imagePath);
-    const photoUrls = [base64Image];
-    const photoUrlsJson = JSON.stringify(photoUrls);
-    const photoUrl = base64Image; // First image for backward compatibility
-
     await db.run(
-      `INSERT INTO games (name, photoUrl, photoUrls, price, discount, keyType, creatorEmail)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO games (name, photoUrls, price, discount, keyType, creatorEmail)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         game.name,
-        photoUrl,
-        photoUrlsJson,
+        JSON.stringify(photoUrls),
         game.price,
         game.discount,
         game.keyType,
@@ -108,7 +74,7 @@ export async function seedDatabase(): Promise<void> {
       ]
     );
 
-    console.log(`Seeded game: ${game.name} with image from ${game.imageFileName}`);
+    console.log(`Seeded game: ${game.name}`);
   }
 
   console.log(`Seeded ${games.length} games into the database`);

@@ -6,8 +6,7 @@ const API_BASE_URL = "http://localhost:3000";
 export interface Game {
   id: number;
   name: string;
-  photoUrl: string | null; // Legacy field
-  photoUrls: string[] | null; // Array of image URLs
+  photoUrls: string[]; // Image paths on the API server, e.g. /uploads/<name>.jpg
   price: number;
   discount: number;
   keyType: KeyType;
@@ -22,8 +21,11 @@ export interface CreateGameRequest {
   discount?: number;
   keyType: KeyType;
   creatorEmail: string;
-  photoUrls?: string[]; // Array of base64 image strings
+  images: File[];
 }
+
+// Turns an image path from the API into a URL the browser can load
+export const imageUrl = (path: string): string => `${API_BASE_URL}${path}`;
 
 export const api = {
   // Get all games or search games
@@ -36,16 +38,18 @@ export const api = {
   },
 
   // Create a new game listing
+  // Sent as multipart/form-data so the images travel as real files. The
+  // browser sets the Content-Type header, including the multipart boundary.
   createGame: async (gameData: CreateGameRequest): Promise<Game> => {
-    const response = await axios.post<Game>(
-      `${API_BASE_URL}/publish`,
-      gameData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const form = new FormData();
+    form.append("name", gameData.name);
+    form.append("price", String(gameData.price));
+    form.append("discount", String(gameData.discount ?? 0));
+    form.append("keyType", gameData.keyType);
+    form.append("creatorEmail", gameData.creatorEmail);
+    gameData.images.forEach((file) => form.append("images", file));
+
+    const response = await axios.post<Game>(`${API_BASE_URL}/publish`, form);
     return response.data;
   },
 };

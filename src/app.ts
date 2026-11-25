@@ -1,21 +1,52 @@
 import express, { Express, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
+import { mkdirSync } from 'fs';
+import fs from 'fs/promises';
+import path from 'path';
+import multer from 'multer';
 import { initializeDatabase, getDatabase } from './database/init';
-import { CreateGameRequest, Game, GameResponse } from './types/game';
+import { Game, GameResponse } from './types/game';
 import { isValidKeyType, KEY_TYPE_OPTIONS } from './types/keyType';
+import { UPLOAD_DIR, UPLOAD_URL_PATH } from './uploads';
 
 dotenv.config();
 
 const app: Express = express();
 const PORT = process.env.PORT || 3000;
 
+// Accepted image types and the file extension each one is saved with
+const IMAGE_EXTENSIONS = new Map([
+  ['image/jpeg', '.jpg'],
+  ['image/png', '.png'],
+  ['image/webp', '.webp'],
+  ['image/gif', '.gif'],
+]);
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB, same limit as the frontend
+const MAX_IMAGES = 10;
+
+// Images stay in memory until the listing passes validation, so a rejected
+// request never leaves files behind in the uploads folder.
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_SIZE, files: MAX_IMAGES },
+  fileFilter: (req, file, cb) => {
+    if (IMAGE_EXTENSIONS.has(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(Object.assign(new Error('Images must be JPEG, PNG, WebP or GIF'), { status: 400 }));
+    }
+  },
+});
+
+mkdirSync(UPLOAD_DIR, { recursive: true });
+
 // Middleware
 app.use(cors());
-// Increased limit for base64 images (50MB in bytes)
-const MAX_PAYLOAD_SIZE = 50 * 1024 * 1024; // 50MB
-app.use(express.json({ limit: MAX_PAYLOAD_SIZE }));
-app.use(express.urlencoded({ extended: true, limit: MAX_PAYLOAD_SIZE }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(UPLOAD_URL_PATH, express.static(UPLOAD_DIR));
 
 // Initialize database on startup
 initializeDatabase().catch(console.error);
@@ -26,32 +57,21 @@ function calculateFinalPrice(price: number, discount: number): number {
   return Math.round((price - discountAmount) * 100) / 100; // Round to 2 decimal places
 }
 
-// Helper function to convert Game to GameResponse
+// Helper function to convert a database row to GameResponse
 function toGameResponse(game: any): GameResponse {
-  // Parse photoUrls from JSON string if it's a string
-  let photoUrls: string[] | null = null;
-  if (game.photoUrls) {
-    if (typeof game.photoUrls === 'string') {
-      try {
-        photoUrls = JSON.parse(game.photoUrls);
-      } catch {
-        photoUrls = [];
-      }
-    } else if (Array.isArray(game.photoUrls)) {
-      photoUrls = game.photoUrls;
-    }
-  }
-  
-  // Fallback to photoUrl if photoUrls is empty/null
-  if ((!photoUrls || photoUrls.length === 0) && game.photoUrl) {
-    photoUrls = [game.photoUrl];
-  }
-
   return {
     ...game,
-    photoUrls,
+    photoUrls: game.photoUrls ? JSON.parse(game.photoUrls) : [],
     finalPrice: calculateFinalPrice(game.price, game.discount || 0)
   };
+}
+
+// Form fields arrive as strings, JSON bodies may send numbers. Returns
+// undefined when the value is missing and NaN when it is not a number.
+function parseNumber(value: unknown): number | undefined {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') return Number(value);
+  return undefined;
 }
 
 // Basic route
@@ -64,17 +84,19 @@ app.get('/health', (req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
-// POST /publish - Create a new game listing
-app.post('/publish', async (req: Request, res: Response) => {
+// POST /publish - Create a new game listing (multipart/form-data, images in "images")
+app.post('/publish', upload.array('images', MAX_IMAGES), async (req: Request, res: Response) => {
   try {
-    const gameData: CreateGameRequest = req.body;
+    const gameData = req.body ?? {};
+    const files = (req.files as Express.Multer.File[] | undefined) ?? [];
 
     // Validation
     if (!gameData.name || typeof gameData.name !== 'string' || gameData.name.trim() === '') {
       return res.status(400).json({ error: 'Name is required and must be a non-empty string' });
     }
 
-    if (gameData.price === undefined || typeof gameData.price !== 'number' || gameData.price < 0) {
+    const price = parseNumber(gameData.price);
+    if (price === undefined || !Number.isFinite(price) || price < 0) {
       return res.status(400).json({ error: 'Price is required and must be a non-negative number' });
     }
 
@@ -98,35 +120,28 @@ app.post('/publish', async (req: Request, res: Response) => {
     }
 
     // Set defaults
-    const discount = gameData.discount !== undefined ? gameData.discount : 0;
-    if (discount < 0 || discount > 100) {
+    const discount = parseNumber(gameData.discount) ?? 0;
+    if (!Number.isFinite(discount) || discount < 0 || discount > 100) {
       return res.status(400).json({ error: 'Discount must be between 0 and 100' });
     }
 
-    // Process base64 images
+    // Save the images under random names and keep their public paths
     const photoUrls: string[] = [];
-    if (gameData.photoUrls && Array.isArray(gameData.photoUrls) && gameData.photoUrls.length > 0) {
-      // Validate base64 strings
-      for (const base64String of gameData.photoUrls) {
-        if (typeof base64String === 'string' && base64String.startsWith('data:image/')) {
-          photoUrls.push(base64String);
-        }
-      }
+    for (const file of files) {
+      const fileName = crypto.randomUUID() + IMAGE_EXTENSIONS.get(file.mimetype);
+      await fs.writeFile(path.join(UPLOAD_DIR, fileName), file.buffer);
+      photoUrls.push(`${UPLOAD_URL_PATH}/${fileName}`);
     }
 
     // Insert into database
     const db = await getDatabase();
-    const photoUrlsJson = JSON.stringify(photoUrls);
-    const photoUrl = photoUrls.length > 0 ? photoUrls[0] : null; // Keep first image for backward compatibility
-
     const result = await db.run(
-      `INSERT INTO games (name, photoUrl, photoUrls, price, discount, keyType, creatorEmail)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO games (name, photoUrls, price, discount, keyType, creatorEmail)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
         gameData.name.trim(),
-        photoUrl,
-        photoUrlsJson,
-        gameData.price,
+        JSON.stringify(photoUrls),
+        price,
         discount,
         gameData.keyType,
         gameData.creatorEmail.trim()
@@ -189,14 +204,13 @@ app.get('/list', async (req: Request, res: Response) => {
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: express.NextFunction) => {
   console.error('Unhandled error:', err);
-  
-  // Handle payload too large errors
-  if (err.type === 'entity.too.large') {
-    return res.status(413).json({ 
-      error: `Payload too large. Maximum size is ${MAX_PAYLOAD_SIZE / (1024 * 1024)}MB. Your request was ${(err.length / (1024 * 1024)).toFixed(2)}MB.` 
-    });
+
+  // Upload limits, wrong image types and malformed bodies are client errors
+  const status = err instanceof multer.MulterError ? 400 : err.status ?? 500;
+  if (status < 500) {
+    return res.status(status).json({ error: err.message });
   }
-  
+
   res.status(500).json({ error: 'Internal server error' });
 });
 
